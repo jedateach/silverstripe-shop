@@ -16,8 +16,6 @@ class TermsCheckoutComponent extends CheckoutComponent {
 							</a>
 						page"), $page->Link()
 					)
-				)->setCustomValidationMessage(
-					_t("CheckoutField.MUSTAGREETOTERMS", "You must agree to the terms and conditions")
 				)
 			);
 		}

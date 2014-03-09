@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Encapsulated manipulation of the current order using a singleton pattern.
  *
@@ -8,17 +9,22 @@
  *
  * @package shop
  */
-class ShoppingCart{
+class ShoppingCart {
 
 	private static $cartid_session_name = 'shoppingcartid';
 
 	private $order;
+
 	private $calculateonce = false;
+
 	private $message;
+
 	private $type;
 
 	/**
 	 * Access for only allowing access to one (singleton) ShoppingCart.
+	 *
+	 * @return ShoppingCart
 	 */
 	public static function singleton() {
 		static $instance = null;
@@ -30,71 +36,95 @@ class ShoppingCart{
 
 	/**
 	 * Shortened alias for ShoppingCart::singleton()->current()
+	 *
+	 * @return ShoppingCart
 	 */
 	public static function curr() {
 		return self::singleton()->current();
 	}
 
 	/**
-	* Singleton prevents constructing a ShoppingCart any other way.
-	*/
+	 * Singleton prevents constructing a ShoppingCart any other way.
+	 */
 	private function __construct() {
 
 	}
 
 	/**
-	* Get the current order, or return null if it doesn't exist.
-	*/
+	 * Get the current order, or return null if it doesn't exist.
+	 *
+	 * @return Order
+	 */
 	public function current() {
-		//hack to (re)calculate modifiers if template is being rendered
-		//TODO: warning, this will fall down if this function is called
-			//from a user-called $something->renderWith('')
-		if(!$this->calculateonce && SSViewer::topLevel() && $order = $this->order){
+		if(!$this->calculateonce && SSViewer::topLevel() && $order = $this->order) {
 			$this->calculateonce = true;
+
 			$order->calculate();
 		}
-		if($this->order) return $this->order;
-		//find order by id saved to session (allows logging out and retaining cart contents)
-		$sessionid = Session::get(self::$cartid_session_name);
-		if ($sessionid && $order = Order::get()->filter(array(
-			"Status" => "Cart",
-			"ID" => $sessionid
-		))->first()) {
-			return $this->order = $order;
+
+		if($this->order) {
+			return $this->order;
 		}
+
+		$sessionid = Session::get(self::$cartid_session_name);
+
+		if ($sessionid) {
+			$this->order = Order::get()->filter(array(
+				"Status" => "Cart",
+				"ID" => $sessionid
+			))->first();
+
+			if($this->order) {
+				return $this->order;
+			}
+		}
+
 		return false;
 	}
 
 	/**
 	 * Set the current cart
+	 *
+	 * @param Order
+	 *
+	 * @return ShoppingCart
 	 */
 	public function setCurrent(Order $cart) {
-		if(!$cart->IsCart()){
+		if(!$cart->IsCart()) {
 			trigger_error("Passed Order object is not cart status", E_ERROR);
 		}
+
 		$this->order = $cart;
+
 		Session::set(self::$cartid_session_name, $cart->ID);
+
 		return $this;
 	}
 
 	/**
 	 * Helper that only allows orders to be started internally.
+	 *
+	 * @return Order
 	 */
 	protected function findOrMake() {
-		if($this->current()) return $this->current();
-		//otherwise start a new order
-		$order = new Order();
-		$order->SessionID = session_id();
-		if(Config::inst()->get('ShopMember', 'login_joins_cart')){
-			$order->MemberID = Member::currentUserID(); // Set the Member relation to this order
+		if($this->current()) {
+			return $this->current();
 		}
-		$order->write();
-		$order->extend('onStartOrder');
-		Session::set(self::$cartid_session_name, $order->ID);
-		return $this->order = $order;
-	}
 
-	// Manipulations
+		$this->order = new Order();
+		$this->order->SessionID = session_id();
+		
+		if(Config::inst()->get('ShopMember', 'login_joins_cart')) {
+			$this->order->MemberID = Member::currentUserID();
+		}
+
+		$this->order->write();
+		$this->order->extend('onStartOrder');
+		
+		Session::set(self::$cartid_session_name, $this->order->ID);
+
+		return $this->order;
+	}
 
 	/**
 	 * Adds an item to the cart
@@ -107,21 +137,28 @@ class ShoppingCart{
 	public function add(Buyable $buyable, $quantity = 1, $filter = array()) {
 		$order = $this->findOrMake();
 		$order->extend("beforeAdd", $buyable, $quantity, $filter);
-		if(!$buyable){
+
+		if(!$buyable) {
 			return $this->error(_t("ShoppingCart.PRODUCTNOTFOUND", "Product not found."));
 		}
+
 		$item = $this->findOrMakeItem($buyable, $filter);
-		if(!$item){
+
+		if(!$item) {
 			return false;
 		}
-		if(!$item->_brandnew){
+
+		if(!$item->_brandnew) {
 			$item->Quantity += $quantity;
-		}else{
+		} else {
 			$item->Quantity = $quantity;
 		}
+
 		$item->write();
 		$order->extend("afterAdd", $item, $buyable, $quantity, $filter);
+
 		$this->message(_t("ShoppingCart.ITEMADD", "Item has been added successfully."));
+		
 		return true;
 	}
 
@@ -135,13 +172,17 @@ class ShoppingCart{
 	public function remove(Buyable $buyable, $quantity = null, $filter = array()) {
 		$order = $this->current();
 		$order->extend("beforeRemove", $buyable, $quantity, $filter);
-		if(!$order){
+
+		if(!$order) {
 			return $this->error(_t("ShoppingCart.NOORDER", "No current order."));
 		}
+
 		$item = $this->get($buyable, $filter);
-		if(!$item){
+		
+		if(!$item) {
 			return false;
 		}
+
 		//if $quantity will become 0, then remove all
 		if(!$quantity || ($item->Quantity - $quantity) <= 0){
 			$item->delete();
@@ -164,20 +205,25 @@ class ShoppingCart{
 	 * @param int $quantity
 	 */
 	public function setQuantity(Buyable $buyable, $quantity = 1, $filter = array()) {
-
-		if($quantity <= 0){
+		if($quantity <= 0) {
 			return $this->remove($buyable, $quantity, $filter);
 		}
+
 		$order = $this->findOrMake();
 		$item = $this->findOrMakeItem($buyable, $filter);
-		if(!$item){
+
+		if(!$item) {
 			return false;
 		}
+
 		$order->extend("beforeSetQuantity", $buyable, $quantity, $filter);
+		
 		$item->Quantity = $quantity;
 		$item->write();
+		
 		$order->extend("afterSetQuantity", $item, $buyable, $quantity, $filter);
 		$this->message(_t("ShoppingCart.QUANTITYSET", "Quantity has been set."));
+		
 		return true;
 	}
 
@@ -188,12 +234,17 @@ class ShoppingCart{
 	 */
 	private function findOrMakeItem(Buyable $buyable,$filter = array()) {
 		$order = $this->findOrMake();
+	
 		if(!$buyable || !$order){
 			return false;
 		}
+	
 		$item = $this->get($buyable, $filter);
-		if(!$item){
-			if(!$buyable->canPurchase(Member::currentUser())){
+	
+		if(!$item) {
+			$member = Member::currentUser();
+
+			if(!$buyable->canPurchase($member)) {
 				return $this->error(
 					sprintf(_t("ShoppingCart.CANNOTPURCHASE",
 						"This %s cannot be purchased."),
@@ -202,12 +253,16 @@ class ShoppingCart{
 				);
 				//TODO: produce a more specific message
 			}
+
 			$item = $buyable->createItem(1, $filter);
 			$item->OrderID = $order->ID;
 			$item->write();
+
 			$order->Items()->add($item);
-			$item->_brandnew = true; //flag as being new
+
+			$item->_brandnew = true; // flag as being new
 		}
+		
 		return $item;
 	}
 

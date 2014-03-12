@@ -112,7 +112,7 @@ class CheckoutPage_Controller extends Page_Controller {
 		$config = new CheckoutComponentConfig(ShoppingCart::curr(), false);
 		$config->AddComponent(new OnsitePaymentCheckoutComponent());
 
-		$form = new PaymentForm($this, "PaymentForm", $config);
+		$form = PaymentForm::create($this, "PaymentForm", $config);
 
 		$form->setActions(new FieldList(
 			FormAction::create("submitpayment", "Submit Payment")

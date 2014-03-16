@@ -170,7 +170,7 @@ class Product extends Page implements Buyable {
 	public function canPurchase($member = null, $quantity = 1) {
 		$global = self::config()->global_allow_purchase;
 
-		if(!$global || !$this->AllowPurchase || !$this->isPublished()) {
+		if(!$global || !$this->AllowPurchase) {
 			return false;
 		}
 

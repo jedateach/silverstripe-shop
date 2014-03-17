@@ -130,10 +130,6 @@ class OrderProcessor{
 			//errors have been stored.
 			return false;
 		}
-		
-		//map shop data to omnipay fields
-		$shipping = $this->order->getShippingAddress();
-		$billing = $this->order->getBillingAddress();
 
 		$service = PurchaseService::create($payment)
 					->setReturnUrl($this->order->Link());

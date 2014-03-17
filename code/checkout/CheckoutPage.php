@@ -84,8 +84,8 @@ class CheckoutPage_Controller extends Page_Controller {
 			'OrderForm',
 			Injector::inst()->create("CheckoutComponentConfig", ShoppingCart::curr())
 		);
-
 		$form->Cart = $this->Cart();
+		$this->extend('updateOrderForm', $form);
 
 		return $form;
 	}
@@ -113,12 +113,11 @@ class CheckoutPage_Controller extends Page_Controller {
 		$config->AddComponent(new OnsitePaymentCheckoutComponent());
 
 		$form = PaymentForm::create($this, "PaymentForm", $config);
-
 		$form->setActions(new FieldList(
 			FormAction::create("submitpayment", "Submit Payment")
 		));
-
 		$form->setFailureLink($this->Link());
+		$this->extend('updatePaymentForm', $form);
 
 		return $form;
 	}

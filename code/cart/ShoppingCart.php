@@ -117,7 +117,7 @@ class ShoppingCart {
 		$this->order->SessionID = session_id();
 		
 		if(Config::inst()->get('ShopMember', 'login_joins_cart')) {
-			$this->order->MemberID = Member::currentUserID();
+			if(Member::currentUserID()) $this->order->MemberID = Member::currentUserID();
 		}
 
 		$this->order->write();

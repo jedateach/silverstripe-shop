@@ -62,6 +62,7 @@ class MembershipCheckoutComponent extends CheckoutComponent{
 		if(Checkout::membership_required() || !empty($data['Password'])){
 			$member = new Member($data);
 			$idval = $data[Member::get_unique_identifier_field()];
+			$idfield = Member::get_unique_identifier_field();
 			if(ShopMember::get_by_identifier($idval)){
 				$result->error(
 					sprintf(

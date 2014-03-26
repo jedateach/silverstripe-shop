@@ -84,8 +84,8 @@ class CheckoutPage_Controller extends Page_Controller {
 			'OrderForm',
 			Injector::inst()->create("CheckoutComponentConfig", ShoppingCart::curr())
 		);
-
 		$form->Cart = $this->Cart();
+		$this->extend('updateOrderForm', $form);
 
 		return $form;
 	}
@@ -113,13 +113,38 @@ class CheckoutPage_Controller extends Page_Controller {
 		$config->AddComponent(new OnsitePaymentCheckoutComponent());
 
 		$form = PaymentForm::create($this, "PaymentForm", $config);
-
 		$form->setActions(new FieldList(
 			FormAction::create("submitpayment", "Submit Payment")
 		));
-
 		$form->setFailureLink($this->Link());
+		$this->extend('updatePaymentForm', $form);
 
 		return $form;
+	}
+
+	/**
+	 * Retrieves error messages for the latest payment (if existing).
+	 * This can originate e.g. from an earlier offsite gateway API response.
+	 * 
+	 * @return string
+	 */
+	public function PaymentErrorMessage() {
+		$order = $this->Cart();
+		if(!$order) return false;
+
+		$lastPayment = $order->Payments()->sort('Created', 'DESC')->first();
+		if(!$lastPayment) return false;
+
+		$errorMessages = $lastPayment->Messages()->exclude('Message', '')->sort('Created', 'DESC');
+		$lastErrorMessage = null;
+		foreach($errorMessages as $errorMessage) {
+			if($errorMessage instanceof GatewayErrorMessage) {
+				$lastErrorMessage = $errorMessage;
+				break;
+			}
+		}
+		if(!$lastErrorMessage) return false;
+
+		return $lastErrorMessage->Message;
 	}
 }

@@ -10,7 +10,14 @@
  */
 class OrderProcessor{
 
+	/**
+	 * @var Order
+	 */
 	protected $order;
+
+	/**
+	 * @var string
+	 */
 	protected $error;
 
 	/**
@@ -85,8 +92,7 @@ class OrderProcessor{
 				$member->Groups()->add($cgroup);
 			}
 		}
-		//save order reference to session
-		OrderManipulation::add_session_order($this->order);
+
 		//allow decorators to do stuff when order is saved.
 		$this->order->extend('onPlaceOrder');
 		$this->order->write();
@@ -119,6 +125,16 @@ class OrderProcessor{
 	}
 
 	/**
+	 * URL to display success message to the user. 
+	 * Happens after any potential offsite gateway redirects.
+	 * 
+	 * @return String Relative URL
+	 */
+	public function getReturnUrl() {
+		return $this->order->Link();
+	}
+
+	/**
 	 * Create a payment model, and provide link to redirect to external gateway,
 	 * or redirect to order link.
 	 * @return string - url for redirection after payment has been made
@@ -130,13 +146,13 @@ class OrderProcessor{
 			//errors have been stored.
 			return false;
 		}
-		
-		//map shop data to omnipay fields
-		$shipping = $this->order->getShippingAddress();
-		$billing = $this->order->getBillingAddress();
 
+		// Create a purchase service, and set the user-facing success URL for redirects
 		$service = PurchaseService::create($payment)
-					->setReturnUrl($this->order->Link());
+					->setReturnUrl($this->getReturnUrl());
+
+		// Save order reference to session
+		OrderManipulation::add_session_order($this->order);
 
 		// Process payment, get the result back
 		$response = $service->purchase($this->getGatewayData($gatewaydata));
@@ -303,6 +319,13 @@ class OrderProcessor{
 		$e->setSubject($title);
 		$e->setTo($member->Email);
 		$e->send();
+	}
+
+	/**
+	 * @return Order
+	 */
+	public function getOrder() {
+		return $this->order;
 	}
 
 	public function getError() {

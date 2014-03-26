@@ -61,6 +61,13 @@ class ProductVariation extends DataObject implements Buyable {
 
 	private static $order_item = "ProductVariation_OrderItem";
 
+	private static $title_has_label = false;
+
+	private static $title_separator = ' ';
+
+	private static $title_glue = ' ';
+
+
 	public function getCMSFields() {
 		$fields = new FieldList(
 			TextField::create('InternalItemID','Product Code'),
@@ -116,9 +123,17 @@ class ProductVariation extends DataObject implements Buyable {
 		if($values->exists()){
 			$labelvalues = array();
 			foreach($values as $value){
-				$labelvalues[] = $value->Type()->Label.':'.$value->Value;
+				if(self::config()->title_has_label) {
+					if(self::config()->title_separator) {
+						$labelvalues[] = $value->Type()->Label . self::config()->title_separator . $value->Value;
+					} else {
+						$labelvalues[] = $value->Type()->Label . ' ' . $value->Value;
+					}
+				} else {
+					$labelvalues[] = $value->Value;
+				}
 			}
-			return implode(', ',$labelvalues);
+			return implode(self::config()->title_glue, $labelvalues);
 		}
 		return $this->InternalItemID;
 	}
